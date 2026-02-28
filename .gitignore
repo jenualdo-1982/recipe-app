@@ -1,0 +1,14 @@
+back/.venv
+__pycache__/
+*.pyc
+*.sqlite3
+
+back/media/
+
+front/node_modules
+front/dist
+
+.DS_Store
+
+План.rtf
+Спецификация.rtf
