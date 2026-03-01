@@ -13,17 +13,16 @@ import shutil
 # 1. Создаем таблицы в БД
 models.Base.metadata.create_all(bind=engine)
 
-# 2. Инициализация папки для медиа (Автоматическое создание при старте)
-MEDIA_ROOT = "media"
-if not os.path.exists(MEDIA_ROOT):
-    os.makedirs(MEDIA_ROOT)
+# 2. Создаем папку media, если её нет
+if not os.path.exists("media"):
+    os.makedirs("media")
 
 app = FastAPI()
 
-# 3. Раздача медиа-файлов (чтобы браузер мог открыть картинку по ссылке)
-app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
+# 3. Раздача медиа-файлов
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
-# Список разрешенных адресов для CORS
+# 4. Настройка CORS
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
@@ -38,91 +37,98 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔹 Получить все рецепты
+# --- ЭНДПОИНТЫ ---
+
+# 🔹 1. Получить все рецепты (список)
 @app.get("/recipes/")
 def get_recipes(db: Session = Depends(get_db)):
-    # Возвращаем все поля, включая путь к картинке 'image'
     return db.query(models.Recipe).all()
 
+# 🔹 2. Получить один рецепт (ДЛЯ КАРТОЧКИ)
+@app.get("/recipes/{recipe_id}")
+def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
+    # Эти принты появятся в терминале VS Code при нажатии кнопки "Смотреть"
+    print(f"--- Запрос на рецепт ID: {recipe_id} ---")
+    
+    recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
+    
+    if not recipe:
+        print(f"--- ОШИБКА: Рецепт {recipe_id} не найден ---")
+        raise HTTPException(status_code=404, detail="Рецепт не найден")
+    
+    print(f"--- УСПЕХ: Отправляем рецепт {recipe.title} ---")
+    
+    return {
+        "id": recipe.id,
+        "title": recipe.title,
+        "instructions": recipe.instructions,
+        "servings_default": recipe.servings_default,
+        "image": recipe.image,
+        "ingredients": [
+            {
+                "name": ri.ingredient.name,
+                "amount": ri.amount,
+                "unit": ri.unit
+            } for ri in recipe.ingredients
+        ]
+    }
 
-# 🔹 Создание рецепта с фото
+# 🔹 3. Создание рецепта
 @app.post("/recipes/")
 async def create_recipe(
     title: str = Form(...),
     instructions: str = Form(...),
     servings_default: int = Form(...),
-    ingredients: str = Form(...),  # JSON строка ингредиентов
-    image: UploadFile = File(None),  # необязательный файл
+    ingredients: str = Form(...),  
+    image: UploadFile = File(None),  
     db: Session = Depends(get_db)
 ):
-    # 1️⃣ Создаем объект рецепта
     new_recipe = models.Recipe(
         title=title,
         instructions=instructions,
         servings_default=servings_default
     )
     db.add(new_recipe)
-    db.flush()  # Получаем ID без закрытия транзакции
+    db.flush() 
 
-    image_path = None
-
-    # 2️⃣ Сохраняем и обрабатываем фото
     if image:
-        # Индивидуальная папка для рецепта
-        recipe_folder = os.path.join(MEDIA_ROOT, f"recipe_{new_recipe.id}")
+        recipe_folder = os.path.join("media", f"recipe_{new_recipe.id}")
         os.makedirs(recipe_folder, exist_ok=True)
 
-        # Генерация уникального имени
         file_ext = image.filename.split(".")[-1]
         unique_name = f"{uuid4()}.{file_ext}"
-        file_location = os.path.join(recipe_folder, unique_name)
+        file_location = os.path.join(recipe_folder, unique_name).replace("\\", "/")
 
-        # Сохранение файла из памяти на диск
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(image.file, buffer)
 
-        # Оптимизация изображения через Pillow
         try:
             img = Image.open(file_location)
-            img.thumbnail((1000, 1000))  # Ограничение размера
+            img.thumbnail((1000, 1000))
             img.save(file_location, optimize=True, quality=80)
         except Exception as e:
-            print(f"Ошибка при обработке изображения: {e}")
+            print(f"Ошибка сжатия фото: {e}")
 
-        # Сохраняем путь в базу данных (используем прямой слэш для URL)
-        image_path = file_location.replace("\\", "/")
-        new_recipe.image = image_path
+        new_recipe.image = file_location
 
-    # 3️⃣ Обработка ингредиентов
-    try:
-        ingredients_list = json.loads(ingredients)
-        for ing in ingredients_list:
-            # Ищем ингредиент или создаем новый
-            db_ingredient = db.query(models.Ingredient).filter(
-                models.Ingredient.name == ing["ingredient_name"]
-            ).first()
+    ingredients_list = json.loads(ingredients)
+    for ing in ingredients_list:
+        db_ingredient = db.query(models.Ingredient).filter(
+            models.Ingredient.name == ing["ingredient_name"]
+        ).first()
 
-            if not db_ingredient:
-                db_ingredient = models.Ingredient(name=ing["ingredient_name"])
-                db.add(db_ingredient)
-                db.flush()
+        if not db_ingredient:
+            db_ingredient = models.Ingredient(name=ing["ingredient_name"])
+            db.add(db_ingredient)
+            db.flush()
 
-            # Связываем через промежуточную таблицу
-            recipe_ing = models.RecipeIngredient(
-                recipe_id=new_recipe.id,
-                ingredient_id=db_ingredient.id,
-                amount=ing["amount"],
-                unit=ing["unit"]
-            )
-            db.add(recipe_ing)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Ошибка в формате ингредиентов: {e}")
+        recipe_ing = models.RecipeIngredient(
+            recipe_id=new_recipe.id,
+            ingredient_id=db_ingredient.id,
+            amount=ing["amount"],
+            unit=ing["unit"]
+        )
+        db.add(recipe_ing)
 
     db.commit()
-
-    return {
-        "message": "Рецепт создан!",
-        "id": new_recipe.id,
-        "image_url": f"http://127.0.0.1:8000/{image_path}" if image_path else None
-    }
+    return {"message": "Рецепт создан!", "id": new_recipe.id}

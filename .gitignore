@@ -1,14 +1,20 @@
-back/.venv
+# Python
+.venv/
+back/.venv311/
 __pycache__/
 *.pyc
 *.sqlite3
 
+# Media
 back/media/
 
-front/node_modules
-front/dist
+# Frontend
+front/node_modules/
+front/dist/
 
+# macOS
 .DS_Store
 
+# Docs
 План.rtf
 Спецификация.rtf
