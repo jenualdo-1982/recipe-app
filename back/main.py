@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 import models, schemas
 from database import get_db, engine
@@ -20,7 +21,23 @@ if not os.path.exists("media"):
 app = FastAPI()
 
 # 3. Раздача медиа-файлов
-app.mount("/media", StaticFiles(directory="media"), name="media")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+@app.get("/media/{path:path}")
+async def get_media_file(path: str):
+    # Убираем возможные лишние префиксы, если они прилетают
+    clean_path = path.replace("media/", "")
+    
+    # Склеиваем путь: папка_проекта / media / остальной_путь
+    file_path = os.path.join(BASE_DIR, "media", clean_path)
+    
+    # Для отладки (увидишь в терминале, где именно Python ищет файл)
+    #print(f"Ищем файл по пути: {file_path}")
+
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    
+    #print(f"Файл НЕ найден: {file_path}")
+    raise HTTPException(status_code=404, detail="Файл не найден на диске")
 
 # 4. Настройка CORS
 origins = [
@@ -72,6 +89,30 @@ def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
             } for ri in recipe.ingredients
         ]
     }
+
+@app.delete("/recipes/{recipe_id}")
+def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
+    # 1. Ищем рецепт в базе данных
+    recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
+    
+    if not recipe:
+        raise HTTPException(status_code=404, detail="Рецепт не найден")
+    
+    # 2. Удаляем папку с картинкой, если она существует
+    recipe_folder = os.path.join("media", f"recipe_{recipe_id}")
+    if os.path.exists(recipe_folder):
+        try:
+            shutil.rmtree(recipe_folder)
+            print(f"Папка {recipe_folder} удалена")
+        except Exception as e:
+            print(f"Ошибка при удалении папки: {e}")
+
+    # 3. Удаляем запись из базы данных
+    db.delete(recipe)
+    db.commit()
+    
+    print(f"Рецепт ID {recipe_id} успешно удален из базы")
+    return {"message": "Рецепт удален"}
 
 # 🔹 3. Создание рецепта
 @app.post("/recipes/")

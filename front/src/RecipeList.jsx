@@ -4,8 +4,9 @@ import axios from 'axios';
 const RecipeList = ({ onOpenRecipe }) => {
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Базовый URL твоего бэкенда
+  const [searchQuery, setSearchQuery] = useState("");
+  const [hoveredId, setHoveredId] = useState(null);
+  
   const API_URL = "http://127.0.0.1:8000";
 
   useEffect(() => {
@@ -20,77 +21,151 @@ const RecipeList = ({ onOpenRecipe }) => {
       });
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-      </div>
-    );
-  }
+  // Фильтрация рецептов на лету
+  const filteredRecipes = recipes.filter(recipe => 
+    recipe.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  if (recipes.length === 0) {
-    return (
-      <div className="text-center py-10">
-        <p className="text-gray-500 text-lg">Рецептов пока нет. Самое время что-нибудь приготовить! 👨‍🍳</p>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ textAlign: 'center', padding: '100px', color: '#64748b', fontFamily: 'sans-serif' }}>
+      <div style={{ fontSize: '24px', marginBottom: '10px' }}>⏳</div>
+      Загрузка вашей коллекции...
+    </div>
+  );
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Моя кулинарная книга</h2>
+    <div style={{ 
+      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', 
+      minHeight: '100vh', 
+      padding: '40px 20px 80px', 
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      position: 'relative'
+    }}>
       
-      {/* Сетка карточек: 1 колонка на мобилках, 2 на планшетах, 3 на десктопе */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {recipes.map((recipe) => (
-          <div 
-            key={recipe.id} 
-            className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-          >
-            {/* Блок с изображением */}
-            <div className="relative h-48 w-full bg-gray-200 overflow-hidden">
-              {recipe.image ? (
-                <img 
-                  src={`${API_URL}/${recipe.image}`} 
-                  alt={recipe.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-400 italic">
-                  Нет фото 🍳
-                </div>
-              )}
-              {/* Бейдж с количеством порций (если есть в базе) */}
-              <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold text-gray-700 shadow-sm">
-                👤 {recipe.servings_default}
+      {/* Декоративное свечение */}
+      <div style={{
+        position: 'absolute', top: '-5%', right: '-5%', width: '400px', height: '400px',
+        background: 'rgba(16, 185, 129, 0.05)', borderRadius: '50%', filter: 'blur(80px)', zIndex: 0
+      }}></div>
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        
+        {/* Шапка */}
+        <header style={{ marginBottom: '40px', textAlign: 'center' }}>
+          <span style={{ 
+            textTransform: 'uppercase', letterSpacing: '3px', fontSize: '11px', 
+            fontWeight: '800', color: '#10b981', display: 'block', marginBottom: '10px' 
+          }}>
+            Chef's Collection
+          </span>
+          <h2 style={{ fontSize: '38px', fontWeight: '900', color: '#0f172a', margin: '0', letterSpacing: '-1px' }}>
+            Ваши Рецепты
+          </h2>
+        </header>
+
+        {/* СТРОКА ПОИСКА */}
+        <div style={{ maxWidth: '500px', margin: '0 auto 60px', position: 'relative' }}>
+          <input 
+            type="text"
+            placeholder="Найти рецепт по названию..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ 
+              width: '100%', padding: '16px 20px 16px 50px', borderRadius: '22px', 
+              border: '1px solid rgba(226, 232, 240, 0.8)', backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(10px)', fontSize: '16px', outline: 'none', color: '#1e293b',
+              transition: 'all 0.3s ease', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)', boxSizing: 'border-box'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#10b981';
+              e.target.style.boxShadow = '0 10px 25px rgba(16, 185, 129, 0.12)';
+              e.target.style.backgroundColor = '#fff';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = 'rgba(226, 232, 240, 0.8)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.03)';
+              e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            }}
+          />
+          <span style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', fontSize: '18px', opacity: 0.4 }}>🔍</span>
+        </div>
+
+        {/* Сетка */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+          gap: '35px', width: '100%' 
+        }}>
+          {filteredRecipes.map((recipe) => (
+            <div 
+              key={recipe.id}
+              onMouseEnter={() => setHoveredId(recipe.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              onClick={() => onOpenRecipe(recipe.id)}
+              style={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '30px', overflow: 'hidden',
+                display: 'flex', flexDirection: 'column', height: '420px', cursor: 'pointer',
+                transition: 'all 0.5s cubic-bezier(0.2, 1, 0.2, 1)', border: '1px solid #fff',
+                boxShadow: hoveredId === recipe.id 
+                  ? '0 25px 50px -12px rgba(0, 0, 0, 0.15)' 
+                  : '0 10px 15px -3px rgba(0, 0, 0, 0.05)',
+                transform: hoveredId === recipe.id ? 'translateY(-10px)' : 'none'
+              }}
+            >
+              {/* Картинка */}
+              <div style={{ height: '220px', width: '100%', overflow: 'hidden', flexShrink: 0 }}>
+                {recipe.image ? (
+                  <img 
+                    src={`${API_URL}/${recipe.image}`} 
+                    style={{ 
+                      width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+                      transition: 'transform 0.8s ease',
+                      transform: hoveredId === recipe.id ? 'scale(1.12)' : 'scale(1)'
+                    }} 
+                    alt={recipe.title}
+                  />
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', fontSize: '40px' }}>🥘</div>
+                )}
               </div>
-            </div>
 
-            {/* Контент карточки */}
-            <div className="p-5">
-              <h3 className="text-lg font-bold text-gray-800 mb-2 truncate">
-                {recipe.title}
-              </h3>
-              
-              <p className="text-gray-500 text-sm mb-4 line-clamp-2 h-10">
-                {recipe.instructions || "Инструкции не добавлены..."}
-              </p>
-
-              <div className="flex items-center justify-between mt-auto">
-                <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-md">
-                  Ингредиентов: {recipe.ingredients?.length || 0}
-                </span>
+              {/* Контент */}
+              <div style={{ padding: '25px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ 
+                  margin: '0 0 10px 0', fontSize: '20px', fontWeight: '800', color: '#1e293b',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                }}>
+                  {recipe.title}
+                </h3>
                 
-                <button 
-                  onClick={() => onOpenRecipe(recipe.id)}
-                  className="text-sm font-bold text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-xl transition-colors shadow-lg shadow-green-100"
-                >
-                  Смотреть
-                </button>
+                <p style={{ 
+                  color: '#64748b', fontSize: '14px', lineHeight: '1.6', flexGrow: 1, margin: 0,
+                  display: '-webkit-box', WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                }}>
+                  {recipe.instructions || "Нажмите, чтобы увидеть рецепт..."}
+                </p>
+
+                <div style={{ 
+                  marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #f1f5f9',
+                  display: 'flex', alignItems: 'center', color: '#10b981', fontWeight: '800', fontSize: '13px'
+                }}>
+                  СМОТРЕТЬ РЕЦЕПТ 
+                  <span style={{ 
+                    marginLeft: '8px', transition: 'transform 0.3s', 
+                    transform: hoveredId === recipe.id ? 'translateX(5px)' : 'none' 
+                  }}>→</span>
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+
+        {/* Пустое состояние */}
+        {filteredRecipes.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8', fontSize: '18px' }}>
+            Ничего не нашли... попробуйте другое слово 🥦
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
