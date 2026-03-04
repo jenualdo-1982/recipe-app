@@ -1,4 +1,4 @@
-version: null
+version: "1"
 meta:
   environment: python
   toolchain:
@@ -9,6 +9,5 @@ build:
   useCache: true
 run:
   persistenceMount: /data
-  scriptName: main.py
-  containerPort: 80
-serviceType: compute
+  # Заменяем scriptName на явную команду uvicorn
+  command: uvicorn main:app --host 0.0.0.0 --port 80
