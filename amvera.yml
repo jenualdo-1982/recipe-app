@@ -1,12 +1,19 @@
-version: "1"
 meta:
   environment: python
   toolchain:
     name: pip
-    version: "3.11"
+    version: 3.11
+
 build:
-  requirementsPath: requirements.txt
-  useCache: false  # Временно отключите кэш для чистого запуска
+  # Установка Node.js, сборка React-приложения и установка Python зависимостей
+  script: |
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y nodejs
+    cd front && npm install && npm run build && cd ..
+    pip install -r requirements.txt
+
 run:
+  # Настройка постоянного хранилища и команды запуска
   persistenceMount: /data
-  command: uvicorn back.main:app --host 0.0.0.0 --port 80
+  containerPort: 80
+  command: PYTHONPATH=$PYTHONPATH:$(pwd)/back uvicorn back.main:app --host 0.0.0.0 --port 80
