@@ -5,15 +5,9 @@ meta:
     version: 3.11
 
 build:
-  # Установка Node.js, сборка React-приложения и установка Python зависимостей
-  script: |
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt-get install -y nodejs
-    cd front && npm install && npm run build && cd ..
-    pip install -r requirements.txt
+  requirementsPath: requirements.txt
 
 run:
-  # Настройка постоянного хранилища и команды запуска
   persistenceMount: /data
   containerPort: 80
   command: PYTHONPATH=$PYTHONPATH:$(pwd)/back uvicorn back.main:app --host 0.0.0.0 --port 80
