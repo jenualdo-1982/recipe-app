@@ -9,5 +9,5 @@ build:
   useCache: true
 run:
   persistenceMount: /data
-  # Указываем uvicorn зайти в папку back и запустить main.py
+  # Мы говорим uvicorn: зайди в пакет back, найди модуль main и в нем объект app
   command: uvicorn back.main:app --host 0.0.0.0 --port 80
