@@ -9,5 +9,4 @@ build:
   useCache: true
 run:
   persistenceMount: /data
-  # Заменяем scriptName на явную команду uvicorn
   command: uvicorn main:app --host 0.0.0.0 --port 80
