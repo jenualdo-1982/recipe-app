@@ -9,5 +9,5 @@ build:
   useCache: true
 run:
   persistenceMount: /data
-  # Указываем путь к приложению через точку: папка.файл:объект_fastapi
+  # Указываем uvicorn зайти в папку back и запустить main.py
   command: uvicorn back.main:app --host 0.0.0.0 --port 80
