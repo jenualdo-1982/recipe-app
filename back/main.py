@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles # Добавлено
 from sqlalchemy.orm import Session
 import models, schemas
 from database import get_db, engine
@@ -26,6 +27,10 @@ app.add_middleware(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Путь к папке фронтенда (на уровень выше от папки back)
+FRONTEND_DIR = os.path.join(os.path.dirname(BASE_DIR), "front")
+
+# --- API ЭНДПОИНТЫ ---
 
 # Раздача картинок
 @app.get("/media/{path:path}")
@@ -74,7 +79,7 @@ async def create_recipe(
     db.flush() 
 
     if image:
-        recipe_folder = os.path.join("media", f"recipe_{new_recipe.id}")
+        recipe_folder = os.path.join(BASE_DIR, "media", f"recipe_{new_recipe.id}")
         os.makedirs(recipe_folder, exist_ok=True)
         file_ext = image.filename.split(".")[-1]
         file_location = os.path.join(recipe_folder, f"{uuid4()}.{file_ext}").replace("\\", "/")
@@ -114,7 +119,7 @@ async def update_recipe(
     db_recipe.servings_default = servings_default
 
     if image and image.filename:
-        recipe_folder = os.path.join("media", f"recipe_{recipe_id}")
+        recipe_folder = os.path.join(BASE_DIR, "media", f"recipe_{recipe_id}")
         os.makedirs(recipe_folder, exist_ok=True)
         file_ext = image.filename.split(".")[-1]
         file_location = os.path.join(recipe_folder, f"{uuid4()}.{file_ext}").replace("\\", "/")
@@ -140,8 +145,28 @@ async def update_recipe(
 def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
     recipe = db.query(models.Recipe).filter(models.Recipe.id == recipe_id).first()
     if not recipe: raise HTTPException(status_code=404)
-    recipe_folder = os.path.join("media", f"recipe_{recipe_id}")
+    recipe_folder = os.path.join(BASE_DIR, "media", f"recipe_{recipe_id}")
     if os.path.exists(recipe_folder): shutil.rmtree(recipe_folder)
     db.delete(recipe)
     db.commit()
     return {"message": "Deleted"}
+
+# --- ПОДКЛЮЧЕНИЕ ФРОНТЕНДА ---
+
+# Монтируем статические файлы фронтенда (CSS, JS)
+# Проверяем наличие папки, чтобы сервер не упал при первом запуске
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+# Обработчик для главной страницы и SPA-роутинга
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    # Если путь ведет к API или документации, не перехватываем его
+    if full_path.startswith("recipes") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+        raise HTTPException(status_code=404)
+    
+    index_path = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    
+    return {"detail": "Frontend files not found. Check if 'front' folder exists."}
