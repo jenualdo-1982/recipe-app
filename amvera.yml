@@ -1,14 +1,19 @@
-version: null
 meta:
   environment: python
   toolchain:
     name: pip
-    version: "3.11"
+    version: 3.11
+
 build:
-  requirementsPath: requirements.txt
-  useCache: false
+  # Шаг 1: Установка Node.js и сборка фронтенда
+  # Шаг 2: Установка зависимостей Python
+  script: |
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y nodejs
+    cd front && npm install && npm run build && cd ..
+    pip install -r requirements.txt
+
 run:
   persistenceMount: /data
-  command: uvicorn back.main:app --host 0.0.0.0 --port 80
   containerPort: 80
-serviceType: compute
+  command: PYTHONPATH=$PYTHONPATH:$(pwd)/back uvicorn back.main:app --host 0.0.0.0 --port 80
