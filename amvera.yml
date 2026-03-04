@@ -1,4 +1,4 @@
-version: "1"
+version: null
 meta:
   environment: python
   toolchain:
@@ -6,8 +6,9 @@ meta:
     version: "3.11"
 build:
   requirementsPath: requirements.txt
-  useCache: true
+  useCache: false
 run:
   persistenceMount: /data
-  # Мы говорим uvicorn: зайди в пакет back, найди модуль main и в нем объект app
   command: uvicorn back.main:app --host 0.0.0.0 --port 80
+  containerPort: 80
+serviceType: compute
