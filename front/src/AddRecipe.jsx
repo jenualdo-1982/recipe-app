@@ -10,7 +10,7 @@ const AddRecipe = ({ onSaved }) => {
   const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState(null);
 
-  const API_URL = "http://127.0.0.1:8000";
+  const API_URL = window.location.origin;
   const units = ['г', 'кг', 'мл', 'л', 'шт', 'ст. л.', 'ч. л.', 'стакан', 'по вкусу'];
 
   const addIngredientField = () => {
