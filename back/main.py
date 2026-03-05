@@ -153,20 +153,22 @@ def delete_recipe(recipe_id: int, db: Session = Depends(get_db)):
 
 # --- ПОДКЛЮЧЕНИЕ ФРОНТЕНДА ---
 
-# Монтируем статические файлы фронтенда (CSS, JS)
-# Проверяем наличие папки, чтобы сервер не упал при первом запуске
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+# 1. Монтируем папку assets отдельно. 
+# Это ГАРАНТИРУЕТ, что браузер получит JS и CSS с правильным типом файла.
+assets_path = os.path.join(FRONTEND_DIR, "assets")
+if os.path.exists(assets_path):
+    app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
 
-# Обработчик для главной страницы и SPA-роутинга
+# 2. Обработчик для SPA-роутинга и index.html
 @app.get("/{full_path:path}")
 async def serve_frontend(full_path: str):
-    # Если путь ведет к API или документации, не перехватываем его
-    if full_path.startswith("recipes") or full_path.startswith("docs") or full_path.startswith("openapi.json"):
+    # Если запрос идет к API, документации или уже смонтированным assets, пропускаем его
+    if full_path.startswith(("recipes", "docs", "media", "openapi.json", "assets")):
         raise HTTPException(status_code=404)
     
     index_path = os.path.join(FRONTEND_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     
-    return {"detail": "Frontend files not found. Check if 'front' folder exists."}
+    # Это сообщение поможет вам понять, если путь к папке фронтенда указан неверно
+    return {"detail": f"Frontend index.html not found at {index_path}"}
