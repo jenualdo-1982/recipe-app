@@ -7,7 +7,7 @@ const RecipeList = ({ onOpenRecipe }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredId, setHoveredId] = useState(null);
   
-  const API_URL = "http://127.0.0.1:8000";
+  const API_URL = window.location.origin;
 
   useEffect(() => {
     axios.get(`${API_URL}/recipes/`)
