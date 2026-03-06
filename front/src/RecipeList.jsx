@@ -7,7 +7,7 @@ const RecipeList = ({ onOpenRecipe }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredId, setHoveredId] = useState(null);
   
-  const API_URL = process.env.NODE_ENV === 'development' 
+  const API_URL = import.meta.env.MODE === 'development' 
   ? "http://127.0.0.1:8000" 
   : window.location.origin;
 
