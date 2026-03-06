@@ -16,7 +16,9 @@ const RecipeDetail = ({ recipeId, onBack }) => {
   // Состояние для чекбоксов ингредиентов
   const [checkedIngredients, setCheckedIngredients] = useState({});
 
-  const API_URL = window.location.origin;
+  const API_URL = process.env.NODE_ENV === 'development' 
+  ? "http://127.0.0.1:8000" 
+  : window.location.origin;
   const units = ['г', 'кг', 'мл', 'л', 'шт', 'ст. л.', 'ч. л.', 'стакан', 'по вкусу'];
 
   useEffect(() => { fetchRecipe(); }, [recipeId]);
