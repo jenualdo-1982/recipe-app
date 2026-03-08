@@ -1,19 +1,24 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_all, create_engine
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
 
-# Указываем, где будет лежать файл базы данных
-SQLALCHEMY_DATABASE_URL = "sqlite:///./recipes.db"
+# Проверяем, запущены ли мы на сервере Amvera или локально
+if os.path.exists("/data"):
+    # Путь для Amvera (хранилище, которое не стирается)
+    # Используем 4 слэша для абсолютного пути в SQLite
+    SQLALCHEMY_DATABASE_URL = "sqlite:////data/recipes.db"
+else:
+    # Путь для локальной разработки (в папке проекта)
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./recipes.db"
 
-# Создаем "двигатель". 
-# check_same_thread=False нужен только для SQLite, чтобы FastAPI мог работать асинхронно.
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
-
-# Создаем фабрику сессий — это то, через что мы будем делать запросы
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Функция для получения доступа к БД в эндпоинтах
+Base = declarative_base()
+
 def get_db():
     db = SessionLocal()
     try:
