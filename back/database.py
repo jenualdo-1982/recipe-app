@@ -1,15 +1,14 @@
-from sqlalchemy import create_all, create_engine
+from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
 # Проверяем, запущены ли мы на сервере Amvera или локально
 if os.path.exists("/data"):
-    # Путь для Amvera (хранилище, которое не стирается)
-    # Используем 4 слэша для абсолютного пути в SQLite
+    # Путь для Amvera (хранилище /data)
     SQLALCHEMY_DATABASE_URL = "sqlite:////data/recipes.db"
 else:
-    # Путь для локальной разработки (в папке проекта)
+    # Путь для локальной разработки
     SQLALCHEMY_DATABASE_URL = "sqlite:///./recipes.db"
 
 engine = create_engine(
