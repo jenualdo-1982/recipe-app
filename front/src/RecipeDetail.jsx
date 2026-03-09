@@ -6,14 +6,11 @@ const RecipeDetail = ({ recipeId, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   
-  // Состояния редактирования
   const [editTitle, setEditTitle] = useState('');
   const [editInstructions, setEditInstructions] = useState('');
   const [editServings, setEditServings] = useState(1);
   const [editIngredients, setEditIngredients] = useState([]);
   const [editImage, setEditImage] = useState(null);
-
-  // Состояние для чекбоксов ингредиентов
   const [checkedIngredients, setCheckedIngredients] = useState({});
 
   const API_URL = import.meta.env.MODE === 'development' 
@@ -43,6 +40,7 @@ const RecipeDetail = ({ recipeId, onBack }) => {
   const addIngredientField = () => setEditIngredients([...editIngredients, { name: '', amount: '', unit: 'г' }]);
   const removeIngredientField = (index) => setEditIngredients(editIngredients.filter((_, i) => i !== index));
 
+  // ИСПРАВЛЕННАЯ ФУНКЦИЯ СОХРАНЕНИЯ
   const handleSave = async () => {
     const formData = new FormData();
     formData.append('title', editTitle);
@@ -54,10 +52,15 @@ const RecipeDetail = ({ recipeId, onBack }) => {
     if (editImage) formData.append('image', editImage);
 
     try {
-      await axios.put(`${API_URL}/recipes/${recipeId}`, formData);
+      // Заменили axios.put на axios.post и путь на /update
+      await axios.post(`${API_URL}/recipes/${recipeId}/update`, formData);
       setIsEditing(false);
       fetchRecipe();
-    } catch { alert("Ошибка сохранения"); }
+      alert("Рецепт успешно обновлен!");
+    } catch (err) { 
+      console.error(err);
+      alert("Ошибка сохранения: " + (err.response?.data?.detail || err.message)); 
+    }
   };
 
   const handleDelete = async () => {
@@ -75,7 +78,6 @@ const RecipeDetail = ({ recipeId, onBack }) => {
     <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '20px', fontFamily: 'sans-serif' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         
-        {/* Кнопки управления */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
           <button onClick={onBack} style={btnStyle}>← Назад</button>
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -92,15 +94,12 @@ const RecipeDetail = ({ recipeId, onBack }) => {
 
         <div style={{ background: 'white', borderRadius: '40px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.05)' }}>
           {isEditing ? (
-            /* РЕДАКТИРОВАНИЕ */
             <div style={{ padding: '40px' }}>
               <h2 style={{ marginBottom: '20px' }}>Редактирование</h2>
               <label style={labelStyle}>Название</label>
               <input value={editTitle} onChange={e => setEditTitle(e.target.value)} style={inputStyle} />
-              
               <label style={labelStyle}>Количество порций</label>
               <input type="number" value={editServings} onChange={e => setEditServings(e.target.value)} style={inputStyle} />
-              
               <label style={labelStyle}>Ингредиенты</label>
               {editIngredients.map((ing, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
@@ -119,17 +118,13 @@ const RecipeDetail = ({ recipeId, onBack }) => {
                 </div>
               ))}
               <button onClick={addIngredientField} style={{ width: '100%', padding: '10px', marginBottom: '20px', cursor: 'pointer', borderRadius: '10px', border: '1px dashed #ccc' }}>+ Добавить строку</button>
-
               <label style={labelStyle}>Инструкции</label>
               <textarea value={editInstructions} onChange={e => setEditInstructions(e.target.value)} style={{ ...inputStyle, height: '150px' }} />
-              
               <label style={labelStyle}>Сменить фото</label>
               <input type="file" onChange={e => setEditImage(e.target.files[0])} style={{ marginBottom: '20px' }} />
-
               <button onClick={handleSave} style={{ ...btnStyle, background: '#10b981', color: 'white', width: '100%', padding: '18px' }}>💾 Сохранить изменения</button>
             </div>
           ) : (
-            /* ПРОСМОТР (СТАТИЧНЫЙ) */
             <>
               <div style={{ height: '350px', position: 'relative' }}>
                 {recipe.image ? <img src={`${API_URL}/${recipe.image}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <div style={{ height: '100%', background: '#f1f5f9' }} />}
@@ -138,11 +133,9 @@ const RecipeDetail = ({ recipeId, onBack }) => {
                 </div>
               </div>
               <div style={{ padding: '40px' }}>
-                {/* СТАТИЧНЫЙ БЛОК ПОРЦИЙ */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f0fdf4', padding: '12px 20px', borderRadius: '20px', width: 'fit-content', marginBottom: '30px' }}>
                    <span style={{ color: '#166534', fontWeight: 'bold' }}>🍽️ Порций: {recipe.servings_default}</span> 
                 </div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '40px' }}>
                   <aside>
                     <h3 style={labelStyle}>Ингредиенты</h3>
@@ -154,23 +147,12 @@ const RecipeDetail = ({ recipeId, onBack }) => {
                         ))}
                     </div>
                   </aside>
-                  <main style={{ overflow: 'hidden' }}> {/* Добавили overflow hidden родителю для страховки */}
-  <h3 style={labelStyle}>Приготовление</h3>
-  <p style={{ 
-    whiteSpace: 'pre-wrap', 
-    lineHeight: '1.7', 
-    color: '#475569', 
-    background: '#f8fafc', 
-    padding: '20px', 
-    borderRadius: '20px',
-    // Эти свойства заставят даже "бесконечные" слова разрываться:
-    wordBreak: 'break-word', 
-    overflowWrap: 'anywhere',
-    maxWidth: '100%' 
-  }}>
-    {recipe.instructions}
-  </p>
-</main>
+                  <main style={{ overflow: 'hidden' }}>
+                    <h3 style={labelStyle}>Приготовление</h3>
+                    <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.7', color: '#475569', background: '#f8fafc', padding: '20px', borderRadius: '20px', wordBreak: 'break-word', overflowWrap: 'anywhere', maxWidth: '100%' }}>
+                      {recipe.instructions}
+                    </p>
+                  </main>
                 </div>
               </div>
             </>
